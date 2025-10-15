@@ -22,10 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Functions ---
 
-    // THIS IS THE NEW, MORE ROBUST PARSING FUNCTION
     function parseMenuItems(htmlString) {
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlString; // Directly inject the HTML fragment
+        tempDiv.innerHTML = htmlString;
         const itemDivs = tempDiv.querySelectorAll('.menu-item');
         
         if (itemDivs.length === 0) {
@@ -83,25 +82,26 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
-            // Add a random query parameter to bypass the browser cache
             const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${new Date().getTime()}`);
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
             fullFileContent = await response.text();
             
-            const startMarker = '';
-            const endMarker = '';
+            const menuStartMarker = '';
+            const menuEndMarker = '';
 
-            const startIndex = fullFileContent.indexOf(startMarker);
-            const endIndex = fullFileContent.indexOf(endMarker);
+            const startIndex = fullFileContent.indexOf(menuStartMarker);
+            const endIndex = fullFileContent.indexOf(menuEndMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف. تأكد من وجود و في ملف index.html');
+            if (startIndex === -1 || endIndex === -1) {
+                throw new Error('لم يتم العثور على علامات المنيو في الملف.');
+            }
             
-            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
+            const menuHTML = fullFileContent.substring(startIndex + menuStartMarker.length, endIndex);
             menuItemsData = parseMenuItems(menuHTML);
             
-            if (menuItemsData.length === 0) {
-                 throw new Error('تم تحليل الملف ولكن لم يتم العثور على أي أصناف. تأكد من أن الأصناف موجودة بين علامات المنيو.');
+            if (menuItemsData.length === 0 && menuHTML.trim() !== '') {
+                 console.warn("The menu block was found, but parsing resulted in 0 items.");
             }
 
             renderMenuItems();
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200 });
             fileNameDisplay.textContent = `ضغط بنجاح! (${(compressedFile.size / 1024).toFixed(1)} KB)`;
-            newImageName = document.getElementById('new-image-name').value.trim().replace(/\s+/g, '-') || file.name.replace(/\s+/g, '-');
+            newImageName = (document.getElementById('new-image-name').value.trim().replace(/\s+/g, '-') || file.name.replace(/\s+/g, '-')) + '.jpg';
             
             const reader = new FileReader();
             reader.onload = (e) => { newImageData = e.target.result.split(',')[1]; };
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: Date.now(),
             name: document.getElementById('new-name').value,
             price: document.getElementById('new-price').value,
-            image: document.getElementById('new-image-name').value.trim().replace(/\s+/g, '-'),
+            image: (document.getElementById('new-image-name').value.trim().replace(/\s+/g, '-') || `item-${Date.now()}`) + '.jpg',
             category: document.getElementById('new-category').value.toLowerCase().replace(/\s+/g, '-'),
             description: document.getElementById('new-description').value,
         };
@@ -202,25 +202,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`).join('\n                ')}
             </div>`;
 
-        // ======================================================
-        // START: الجزء الذي تم تعديله
-        // ======================================================
-
-        // أولاً: استبدال بلوك الفلاتر القديم بالجديد
         let tempFullContent = fullFileContent.replace(
             /([\s\S]*?)/,
             `\n${newFilterButtonsHTML}\n`
         );
 
-        // ثانياً: استبدال بلوك المنيو القديم بالجديد
         tempFullContent = tempFullContent.replace(
             /([\s\S]*?)/,
             `\n${newMenuItemsHTML}\n`
         );
-        
-        // ======================================================
-        // END: نهاية الجزء المعدل
-        // ======================================================
         
         const payload = { newContent: tempFullContent };
         if (newImageData && newImageName) {
@@ -238,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             statusDiv.textContent = 'تم التحديث بنجاح! سيتم إعادة تحميل الصفحة...';
             statusDiv.className = 'status success';
-            // Wait 2 seconds before reloading to let the user read the message.
             setTimeout(() => window.location.reload(), 2000);
 
         } catch (error) {
