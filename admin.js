@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State (Source of Truth) ---
     let fullFileContent = '';
-    let menuItemsData = []; // This array is now the single source of truth.
+    let menuItemsData = [];
     let newImageData = null;
     let newImageName = '';
 
@@ -21,16 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const BRANCH_NAME = 'main';
     
     // --- Functions ---
-
     function parseMenuItems(htmlString) {
         const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html'); // Wrap in a div to ensure proper parsing
+        const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
         const itemDivs = doc.querySelectorAll('.menu-item');
         
-        if (itemDivs.length === 0) {
-            console.warn("Parsing found 0 menu items in the provided HTML string.");
-            return [];
-        }
+        if (itemDivs.length === 0) return [];
 
         return Array.from(itemDivs).map(div => {
             const nameEl = div.querySelector('h3');
@@ -38,21 +34,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const priceEl = div.querySelector('.price');
             const imgEl = div.querySelector('img');
 
-            // Defensive check to skip malformed items
-            if (!nameEl || !descEl || !priceEl || !imgEl) {
-                console.warn("Skipping a malformed menu item:", div.innerHTML);
-                return null;
-            }
+            if (!nameEl || !descEl || !priceEl || !imgEl) return null;
 
             return {
-                id: Date.now() + Math.random(), // Unique ID for virtual DOM
+                id: Date.now() + Math.random(),
                 category: div.dataset.category,
                 name: nameEl.textContent.trim(),
                 description: descEl.textContent.trim(),
                 price: parseFloat(priceEl.textContent),
                 image: imgEl.getAttribute('src').replace('images/', ''),
             };
-        }).filter(item => item !== null); // Filter out any skipped (malformed) items
+        }).filter(item => item !== null);
     }
 
     function renderMenuItems() {
@@ -86,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
-            // Use a cache-busting query parameter
             const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${Date.now()}`);
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
@@ -97,15 +88,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const startIndex = fullFileContent.indexOf(startMarker);
             const endIndex = fullFileContent.indexOf(endMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو.');
+            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
             
-            // THIS IS THE FIX: Correctly extract the content *between* the markers
-            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
-
+            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex).trim();
+            
             menuItemsData = parseMenuItems(menuHTML);
             
             if (menuItemsData.length === 0) {
-                 throw new Error('تم تحليل الملف ولكن لم يتم العثور على أي أصناف. تأكد من أن الأصناف موجودة بين علامات المنيو.');
+                 // --- THIS IS THE DIAGNOSTIC STEP ---
+                 const errorMsg = 'فشل تحليل الأصناف. هذا هو الكود الذي تمت قراءته:';
+                 document.querySelector('h2').textContent = errorMsg;
+                 const editor = document.createElement('textarea');
+                 editor.style.width = '100%';
+                 editor.style.height = '300px';
+                 editor.style.direction = 'ltr';
+                 editor.value = menuHTML;
+                 existingItemsContainer.innerHTML = '';
+                 existingItemsContainer.appendChild(editor);
+                 throw new Error('لم يتم العثور على أي أصناف صالحة.');
             }
 
             renderMenuItems();
@@ -177,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري الحفظ ورفع التحديث...';
         statusDiv.className = 'status';
 
-        // Update data array from UI before saving
         menuItemsData.forEach(item => {
             const card = existingItemsContainer.querySelector(`[data-id="${item.id}"]`);
             if (card) {
@@ -213,14 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const menuStart = '';
         const menuEnd = '';
 
-        // Replace filters
         const filterStartIndex = tempFullContent.indexOf(filterStart);
         const filterEndIndex = tempFullContent.indexOf(filterEnd);
         if (filterStartIndex > -1 && filterEndIndex > -1) {
             tempFullContent = tempFullContent.slice(0, filterStartIndex + filterStart.length) + newFilterButtonsHTML + tempFullContent.slice(filterEndIndex);
         }
 
-        // Replace menu items
         const menuStartIndex = tempFullContent.indexOf(menuStart);
         const menuEndIndex = tempFullContent.indexOf(menuEnd);
         if (menuStartIndex > -1 && menuEndIndex > -1) {
