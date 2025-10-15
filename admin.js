@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State (Source of Truth) ---
     let fullFileContent = '';
-    let menuItemsData = [];
+    let menuItemsData = []; // This array is now the single source of truth.
     let newImageData = null;
     let newImageName = '';
 
@@ -21,12 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const BRANCH_NAME = 'main';
     
     // --- Functions ---
+
+    // THIS IS THE NEW, MORE ROBUST PARSING FUNCTION
     function parseMenuItems(htmlString) {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
-        const itemDivs = doc.querySelectorAll('.menu-item');
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlString; // Directly inject the HTML fragment
+        const itemDivs = tempDiv.querySelectorAll('.menu-item');
         
-        if (itemDivs.length === 0) return [];
+        if (itemDivs.length === 0) {
+            console.warn("Parsing found 0 menu items in the provided HTML string.");
+            return [];
+        }
 
         return Array.from(itemDivs).map(div => {
             const nameEl = div.querySelector('h3');
@@ -90,22 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
             
-            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex).trim();
-            
+            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
+
             menuItemsData = parseMenuItems(menuHTML);
             
             if (menuItemsData.length === 0) {
-                 // --- THIS IS THE DIAGNOSTIC STEP ---
-                 const errorMsg = 'فشل تحليل الأصناف. هذا هو الكود الذي تمت قراءته:';
-                 document.querySelector('h2').textContent = errorMsg;
-                 const editor = document.createElement('textarea');
-                 editor.style.width = '100%';
-                 editor.style.height = '300px';
-                 editor.style.direction = 'ltr';
-                 editor.value = menuHTML;
-                 existingItemsContainer.innerHTML = '';
-                 existingItemsContainer.appendChild(editor);
-                 throw new Error('لم يتم العثور على أي أصناف صالحة.');
+                 throw new Error('تم تحليل الملف ولكن لم يتم العثور على أي أصناف. تأكد من أن الأصناف موجودة بين علامات المنيو.');
             }
 
             renderMenuItems();
@@ -242,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusDiv.className = 'status success';
             setTimeout(() => window.location.reload(), 2000);
 
-        } catch (error) {
+        } catch (error) => {
             statusDiv.textContent = `فشل التحديث: ${error.message}`;
             statusDiv.className = 'status error';
         } finally {
