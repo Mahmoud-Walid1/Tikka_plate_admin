@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let fullFileContent = '';
     let menuItemsData = [];
-    let newImageData = null;
+    let newImageData = null; // This will now store the compressed base64 string
 
     // --- GitHub Repo Details ---
     const REPO_OWNER = 'Mahmoud-Walid1';
@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             existingItemsContainer.appendChild(itemCard);
         });
-        // Populate category datalist
         categoryDatalist.innerHTML = '';
         categories.forEach(cat => {
             const option = document.createElement('option');
@@ -71,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
             fullFileContent = await response.text();
-            
             const startMarker = '<div class="menu-grid">';
             const endMarker = '</div>';
             const startIndex = fullFileContent.indexOf(startMarker);
@@ -90,89 +88,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function rebuildMenuHTMLFromUI() {
-        let items = [];
-        existingItemsContainer.querySelectorAll('.item-card').forEach(card => {
-            const originalItem = menuItemsData[card.dataset.index];
-            items.push({
-                ...originalItem,
-                name: card.querySelector('.item-name').value,
-                price: card.querySelector('.item-price').value,
-                description: card.querySelector('.item-description').value,
-            });
-        });
-
-        return items.map(item => `
-            <div class="menu-item" data-category="${item.category}">
-                <img src="images/${item.image}" alt="${item.name}" loading="lazy">
-                <h3>${item.name}</h3>
-                <p>${item.description}</p>
-                <span class="price">${item.price} ريال</span>
-                <button class="add-to-cart-btn" data-name="${item.name}" data-price="${item.price}">أضف للطلب</button>
-            </div>`).join('\n');
-    }
-
     // --- Event Listeners ---
-    newImageFileInput.addEventListener('change', () => {
-        const file = newImageFileInput.files[0];
-        if (file) {
-            fileNameDisplay.textContent = file.name;
+    newImageFileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            fileNameDisplay.textContent = 'لم يتم اختيار أي ملف';
+            newImageData = null;
+            return;
+        }
+
+        fileNameDisplay.textContent = `جاري ضغط الصورة: ${file.name}`;
+        
+        const options = {
+            maxSizeMB: 1,          // Max file size in MB
+            maxWidthOrHeight: 1200, // Resize the image
+            useWebWorker: true,    // Use a worker to avoid freezing the UI
+        };
+
+        try {
+            const compressedFile = await imageCompression(file, options);
+            fileNameDisplay.textContent = `تم ضغط الصورة بنجاح! (${(compressedFile.size / 1024).toFixed(1)} KB)`;
+            
             const reader = new FileReader();
             reader.onload = function(e) {
-                // Get base64 content, without the data URL prefix
                 newImageData = e.target.result.split(',')[1];
             };
-            reader.readAsDataURL(file);
-        } else {
-            fileNameDisplay.textContent = 'لم يتم اختيار أي ملف';
+            reader.readAsDataURL(compressedFile);
+
+        } catch (error) {
+            console.error(error);
+            fileNameDisplay.textContent = 'حدث خطأ أثناء ضغط الصورة.';
             newImageData = null;
         }
     });
 
     addItemForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const newItem = {
-            name: document.getElementById('new-name').value,
-            price: document.getElementById('new-price').value,
-            image: document.getElementById('new-image-name').value,
-            category: document.getElementById('new-category').value,
-            description: document.getElementById('new-description').value,
-        };
-        
-        // Add to the end of the menu
-        const newHtml = `
-            <div class="menu-item" data-category="${newItem.category}">
-                <img src="images/${newItem.image}" alt="${newItem.name}" loading="lazy">
-                <h3>${newItem.name}</h3>
-                <p>${newItem.description}</p>
-                <span class="price">${newItem.price} ريال</span>
-                <button class="add-to-cart-btn" data-name="${newItem.name}" data-price="${newItem.price}">أضف للطلب</button>
-            </div>`;
-        
-        // A bit of a hack to add to the UI immediately, proper way is to rebuild
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = newHtml;
-        const newCard = tempDiv.firstElementChild;
-        // existingItemsContainer.appendChild(newCard); // This won't work easily now
-        
-        statusDiv.textContent = 'تم تجهيز الطبق للإضافة. اضغط "حفظ" لرفع كل التغييرات.';
-        statusDiv.className = 'status success';
-        
-        // Instead of adding to UI, we'll just add to data and ask user to save
-        menuItemsData.push(newItem);
-        saveBtn.click(); // Automatically trigger save
+        // Just trigger the save button which will handle the new item
+        saveBtn.click();
     });
 
     existingItemsContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('delete-btn')) {
             if (confirm('هل أنت متأكد أنك تريد حذف هذا الطبق؟')) {
                 const cardToDelete = e.target.closest('.item-card');
-                const indexToDelete = parseInt(cardToDelete.dataset.index, 10);
-                
-                // Mark for deletion by hiding
                 cardToDelete.style.display = 'none'; 
                 cardToDelete.classList.add('deleted');
-
                 statusDiv.textContent = 'تم حذف الطبق. اضغط "حفظ" لتأكيد الحذف.';
                 statusDiv.className = 'status success';
             }
@@ -186,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري الحفظ ورفع التحديث...';
         statusDiv.className = 'status';
 
-        // Rebuild data from UI, excluding deleted items
         const updatedItems = [];
         existingItemsContainer.querySelectorAll('.item-card:not(.deleted)').forEach(card => {
              const originalItem = menuItemsData[card.dataset.index];
@@ -198,11 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         
-        // Add newly submitted item if form is filled
-        const newName = document.getElementById('new-name').value;
-        if (newName && newImageData) {
+        const newNameInput = document.getElementById('new-name');
+        if (newNameInput.value && newImageData) {
             updatedItems.push({
-                name: newName,
+                name: newNameInput.value,
                 price: document.getElementById('new-price').value,
                 image: document.getElementById('new-image-name').value,
                 category: document.getElementById('new-category').value,
@@ -210,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // Generate final HTML
         const newMenuItemsHTML = updatedItems.map(item => `
             <div class="menu-item" data-category="${item.category}">
                 <img src="images/${item.image}" alt="${item.name}" loading="lazy">
@@ -227,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newFullContent = fullFileContent.substring(0, startIndex + startMarker.length) + '\n' + newMenuItemsHTML + '\n            ' + fullFileContent.substring(endIndex);
         
         const payload = { newContent: newFullContent };
-        if (newName && newImageData) {
+        if (newNameInput.value && newImageData) {
             payload.newImage = {
                 name: document.getElementById('new-image-name').value,
                 content: newImageData
