@@ -83,23 +83,21 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
-            const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${Date.now()}`);
+            // Add a random query parameter to bypass the browser cache
+            const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${new Date().getTime()}`);
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
             fullFileContent = await response.text();
             
-            const startMarker = '<!-- MENU START -->';
-            const endMarker = '<!-- MENU END -->';
-            const filterStart = '<!-- FILTERS START -->';
-            const filterEnd = '<!-- FILTERS END -->';
+            const startMarker = '';
+            const endMarker = '';
 
             const startIndex = fullFileContent.indexOf(startMarker);
             const endIndex = fullFileContent.indexOf(endMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
+            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف. تأكد من وجود و في ملف index.html');
             
             const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
-            console.log(menuHTML); // This will print the raw HTML to the console
             menuItemsData = parseMenuItems(menuHTML);
             
             if (menuItemsData.length === 0) {
@@ -204,25 +202,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`).join('\n                ')}
             </div>`;
 
-        let tempFullContent = fullFileContent;
-        const filterStart = '';
-        const filterEnd = '';
-        const menuStart = '';
-        const menuEnd = '';
+        // ======================================================
+        // START: الجزء الذي تم تعديله
+        // ======================================================
 
-        const filterStartIndex = tempFullContent.indexOf(filterStart);
-        const filterEndIndex = tempFullContent.indexOf(filterEnd);
-        if (filterStartIndex > -1 && filterEndIndex > -1) {
-            tempFullContent = tempFullContent.slice(0, filterStartIndex + filterStart.length) + newFilterButtonsHTML + tempFullContent.slice(filterEndIndex);
-        }
+        // أولاً: استبدال بلوك الفلاتر القديم بالجديد
+        let tempFullContent = fullFileContent.replace(
+            /([\s\S]*?)/,
+            `\n${newFilterButtonsHTML}\n`
+        );
 
-        const menuStartIndex = tempFullContent.indexOf(menuStart);
-        const menuEndIndex = tempFullContent.indexOf(menuEnd);
+        // ثانياً: استبدال بلوك المنيو القديم بالجديد
         tempFullContent = tempFullContent.replace(
-        /<!-- MENU START -->([\s\S]*?)<!-- MENU END -->/,
-            `${menuStart}\n${newMenuItemsHTML}\n${menuEnd}`
-                );
-
+            /([\s\S]*?)/,
+            `\n${newMenuItemsHTML}\n`
+        );
+        
+        // ======================================================
+        // END: نهاية الجزء المعدل
+        // ======================================================
         
         const payload = { newContent: tempFullContent };
         if (newImageData && newImageName) {
@@ -238,8 +236,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (!response.ok || !result.success) throw new Error(result.message || 'حدث خطأ.');
             
-            statusDiv.textContent = 'تم التحديث بنجاح! جاري إعادة التحميل...';
+            statusDiv.textContent = 'تم التحديث بنجاح! سيتم إعادة تحميل الصفحة...';
             statusDiv.className = 'status success';
+            // Wait 2 seconds before reloading to let the user read the message.
             setTimeout(() => window.location.reload(), 2000);
 
         } catch (error) {
