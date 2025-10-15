@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let fullFileContent = '';
     let menuItemsData = [];
-    let newImageData = null; // This will now store the compressed base64 string
+    let newImageData = null;
 
     // --- GitHub Repo Details ---
     const REPO_OWNER = 'Mahmoud-Walid1';
@@ -70,14 +70,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
             fullFileContent = await response.text();
-            const startMarker = '<div class="menu-grid">';
-            const endMarker = '</div>';
+            
+            const startMarker = '';
+            const endMarker = '';
             const startIndex = fullFileContent.indexOf(startMarker);
-            const endIndex = fullFileContent.lastIndexOf(endMarker);
+            const endIndex = fullFileContent.indexOf(endMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على قسم المنيو.');
+            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
             
-            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
+            const menuHTML = fullFileContent.substring(startIndex, endIndex);
             menuItemsData = parseMenuItems(menuHTML);
             renderMenuItems();
             statusDiv.textContent = 'تم التحميل بنجاح. جاهز للتعديل.';
@@ -88,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Listeners ---
     newImageFileInput.addEventListener('change', async (event) => {
         const file = event.target.files[0];
         if (!file) {
@@ -98,25 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         fileNameDisplay.textContent = `جاري ضغط الصورة: ${file.name}`;
-        
-        const options = {
-            maxSizeMB: 1,          // Max file size in MB
-            maxWidthOrHeight: 1200, // Resize the image
-            useWebWorker: true,    // Use a worker to avoid freezing the UI
-        };
+        const options = { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true };
 
         try {
             const compressedFile = await imageCompression(file, options);
             fileNameDisplay.textContent = `تم ضغط الصورة بنجاح! (${(compressedFile.size / 1024).toFixed(1)} KB)`;
             
             const reader = new FileReader();
-            reader.onload = function(e) {
-                newImageData = e.target.result.split(',')[1];
-            };
+            reader.onload = function(e) { newImageData = e.target.result.split(',')[1]; };
             reader.readAsDataURL(compressedFile);
-
         } catch (error) {
-            console.error(error);
             fileNameDisplay.textContent = 'حدث خطأ أثناء ضغط الصورة.';
             newImageData = null;
         }
@@ -124,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addItemForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        // Just trigger the save button which will handle the new item
         saveBtn.click();
     });
 
@@ -148,41 +138,70 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.className = 'status';
 
         const updatedItems = [];
+        const allCategories = new Set();
+
         existingItemsContainer.querySelectorAll('.item-card:not(.deleted)').forEach(card => {
              const originalItem = menuItemsData[card.dataset.index];
-             updatedItems.push({
+             const updatedItem = {
                 ...originalItem,
                 name: card.querySelector('.item-name').value,
                 price: card.querySelector('.item-price').value,
                 description: card.querySelector('.item-description').value,
-            });
+            };
+            updatedItems.push(updatedItem);
+            allCategories.add(updatedItem.category);
         });
         
         const newNameInput = document.getElementById('new-name');
         if (newNameInput.value && newImageData) {
-            updatedItems.push({
+            const newItem = {
                 name: newNameInput.value,
                 price: document.getElementById('new-price').value,
                 image: document.getElementById('new-image-name').value,
                 category: document.getElementById('new-category').value,
                 description: document.getElementById('new-description').value,
-            });
+            };
+            updatedItems.push(newItem);
+            allCategories.add(newItem.category);
         }
         
-        const newMenuItemsHTML = updatedItems.map(item => `
-            <div class="menu-item" data-category="${item.category}">
-                <img src="images/${item.image}" alt="${item.name}" loading="lazy">
-                <h3>${item.name}</h3>
-                <p>${item.description}</p>
-                <span class="price">${item.price} ريال</span>
-                <button class="add-to-cart-btn" data-name="${item.name}" data-price="${item.price}">أضف للطلب</button>
-            </div>`).join('\n');
+        // --- Rebuild BOTH Filters and Menu Items ---
 
-        const startMarker = '<div class="menu-grid">';
-        const endMarker = '</div>';
-        const startIndex = fullFileContent.indexOf(startMarker);
-        const endIndex = fullFileContent.lastIndexOf(endMarker);
-        const newFullContent = fullFileContent.substring(0, startIndex + startMarker.length) + '\n' + newMenuItemsHTML + '\n            ' + fullFileContent.substring(endIndex);
+        const newFilterButtonsHTML = `
+            <div class="menu-filters">
+                <button class="filter-btn active" data-filter="all">الكل</button>
+                ${[...allCategories].map(cat => `<button class="filter-btn" data-filter="${cat}">${cat}</button>`).join('\n                ')}
+            </div>`;
+        
+        const newMenuItemsHTML = `
+            <div class="menu-grid">
+                ${updatedItems.map(item => `
+                <div class="menu-item" data-category="${item.category}">
+                    <img src="images/${item.image}" alt="${item.name}" loading="lazy">
+                    <h3>${item.name}</h3>
+                    <p>${item.description}</p>
+                    <span class="price">${item.price} ريال</span>
+                    <button class="add-to-cart-btn" data-name="${item.name}" data-price="${item.price}">أضف للطلب</button>
+                </div>`).join('\n                ')}
+            </div>`;
+
+        let tempFullContent = fullFileContent;
+        const filterStart = '';
+        const filterEnd = '';
+        const menuStart = '';
+        const menuEnd = '';
+
+        // Replace filters
+        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(filterStart)) + 
+                          filterStart + newFilterButtonsHTML + filterEnd +
+                          tempFullContent.substring(tempFullContent.indexOf(filterEnd) + filterEnd.length);
+
+        // Replace menu items
+        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(menuStart)) +
+                          menuStart + newMenuItemsHTML + menuEnd +
+                          tempFullContent.substring(tempFullContent.indexOf(menuEnd) + menuEnd.length);
+        
+        const newFullContent = tempFullContent;
         
         const payload = { newContent: newFullContent };
         if (newNameInput.value && newImageData) {
