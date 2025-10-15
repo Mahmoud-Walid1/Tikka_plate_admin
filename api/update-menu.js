@@ -10,10 +10,10 @@ export default async function handler(request, response) {
     const { newContent } = request.body;
     const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // Gets the secret key from Vercel's vault
 
-    // --- GitHub Repo Details ---
-    const REPO_OWNER = 'Mahmoud-Walid1'; // !!! AVERY IMPORTANT: Change this
-    const REPO_NAME = 'Tikka_plate'; // The name of your MAIN website repo
-    const FILE_PATH = 'index.html'; // The file we want to update
+    // --- GitHub Repo Details (Corrected) ---
+    const REPO_OWNER = 'Mahmoud-Walid1'; // Your correct GitHub username
+    const REPO_NAME = 'Tikka_plate';   // Your correct repository name
+    const FILE_PATH = 'index.html';    // The file we want to update
 
     if (!newContent) {
         return response.status(400).json({ success: false, message: 'No content provided.' });
@@ -32,6 +32,11 @@ export default async function handler(request, response) {
                 'Accept': 'application/vnd.github.v3+json',
             },
         });
+
+        if (!getFileResponse.ok) {
+            throw new Error('Could not fetch the current file from GitHub. Check repo details and token permissions.');
+        }
+
         const fileData = await getFileResponse.json();
         const currentSha = fileData.sha;
 
