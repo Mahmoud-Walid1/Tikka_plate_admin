@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseMenuItems(htmlString) {
         const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlString, 'text/html');
+        // Wrap the string in a div to ensure proper parsing
+        const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
         return Array.from(doc.querySelectorAll('.menu-item')).map(div => ({
             id: Date.now() + Math.random(), // Unique ID for virtual DOM
             category: div.dataset.category,
@@ -54,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
             existingItemsContainer.appendChild(itemCard);
         });
         categoryDatalist.innerHTML = '';
-        categories.forEach(cat => {
+        [...categories].sort().forEach(cat => {
             const option = document.createElement('option');
             option.value = cat;
             categoryDatalist.appendChild(option);
@@ -66,18 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
+            // Use a cache-busting query parameter
             const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${Date.now()}`);
-            if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
+            if (!response.ok) throw new Error('فشل الاتصال بالريبو. تأكد من صحة البيانات.');
             
             fullFileContent = await response.text();
+            
             const startMarker = '';
             const endMarker = '';
             const startIndex = fullFileContent.indexOf(startMarker);
             const endIndex = fullFileContent.indexOf(endMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو.');
+            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
             
-            const menuHTML = fullFileContent.substring(startIndex, endIndex);
+            // THIS IS THE FIX: Correctly extract the content *between* the markers
+            const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
+
             menuItemsData = parseMenuItems(menuHTML);
             renderMenuItems();
             statusDiv.textContent = 'تم التحميل بنجاح.';
@@ -99,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200 });
             fileNameDisplay.textContent = `ضغط بنجاح! (${(compressedFile.size / 1024).toFixed(1)} KB)`;
-            newImageName = document.getElementById('new-image-name').value || file.name.replace(/\s+/g, '-');
+            newImageName = document.getElementById('new-image-name').value.trim().replace(/\s+/g, '-') || file.name.replace(/\s+/g, '-');
             
             const reader = new FileReader();
             reader.onload = (e) => { newImageData = e.target.result.split(',')[1]; };
@@ -116,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: Date.now(),
             name: document.getElementById('new-name').value,
             price: document.getElementById('new-price').value,
-            image: document.getElementById('new-image-name').value,
+            image: document.getElementById('new-image-name').value.trim().replace(/\s+/g, '-'),
             category: document.getElementById('new-category').value.toLowerCase().replace(/\s+/g, '-'),
             description: document.getElementById('new-description').value,
         };
@@ -158,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const allCategories = [...new Set(menuItemsData.map(item => item.category))];
+        const allCategories = [...new Set(menuItemsData.map(item => item.category))].sort();
         
         const newFilterButtonsHTML = `
             <div class="menu-filters">
@@ -184,14 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const menuStart = '';
         const menuEnd = '';
 
-        // Replace filters
         const filterStartIndex = tempFullContent.indexOf(filterStart);
         const filterEndIndex = tempFullContent.indexOf(filterEnd);
         if (filterStartIndex > -1 && filterEndIndex > -1) {
             tempFullContent = tempFullContent.slice(0, filterStartIndex + filterStart.length) + newFilterButtonsHTML + tempFullContent.slice(filterEndIndex);
         }
 
-        // Replace menu items
         const menuStartIndex = tempFullContent.indexOf(menuStart);
         const menuEndIndex = tempFullContent.indexOf(menuEnd);
         if (menuStartIndex > -1 && menuEndIndex > -1) {
