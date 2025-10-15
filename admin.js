@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
             
             const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
-
+            console.log(menuHTML); // This will print the raw HTML to the console
             menuItemsData = parseMenuItems(menuHTML);
             
             if (menuItemsData.length === 0) {
