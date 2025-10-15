@@ -218,9 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const menuStartIndex = tempFullContent.indexOf(menuStart);
         const menuEndIndex = tempFullContent.indexOf(menuEnd);
-        if (menuStartIndex > -1 && menuEndIndex > -1) {
-            tempFullContent = tempFullContent.slice(0, menuStartIndex + menuStart.length) + newMenuItemsHTML + tempFullContent.slice(menuEndIndex);
-        }
+        tempFullContent = tempFullContent.replace(
+        /<!-- MENU START -->([\s\S]*?)<!-- MENU END -->/,
+            `${menuStart}\n${newMenuItemsHTML}\n${menuEnd}`
+                );
+
         
         const payload = { newContent: tempFullContent };
         if (newImageData && newImageName) {
