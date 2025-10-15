@@ -24,16 +24,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseMenuItems(htmlString) {
         const parser = new DOMParser();
-        // Wrap the string in a div to ensure proper parsing
-        const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
-        return Array.from(doc.querySelectorAll('.menu-item')).map(div => ({
-            id: Date.now() + Math.random(), // Unique ID for virtual DOM
-            category: div.dataset.category,
-            name: div.querySelector('h3').textContent.trim(),
-            description: div.querySelector('p').textContent.trim(),
-            price: parseFloat(div.querySelector('.price').textContent),
-            image: div.querySelector('img').getAttribute('src').replace('images/', ''),
-        }));
+        const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html'); // Wrap in a div to ensure proper parsing
+        const itemDivs = doc.querySelectorAll('.menu-item');
+        
+        if (itemDivs.length === 0) {
+            console.warn("Parsing found 0 menu items in the provided HTML string.");
+            return [];
+        }
+
+        return Array.from(itemDivs).map(div => {
+            const nameEl = div.querySelector('h3');
+            const descEl = div.querySelector('p');
+            const priceEl = div.querySelector('.price');
+            const imgEl = div.querySelector('img');
+
+            // Defensive check to skip malformed items
+            if (!nameEl || !descEl || !priceEl || !imgEl) {
+                console.warn("Skipping a malformed menu item:", div.innerHTML);
+                return null;
+            }
+
+            return {
+                id: Date.now() + Math.random(), // Unique ID for virtual DOM
+                category: div.dataset.category,
+                name: nameEl.textContent.trim(),
+                description: descEl.textContent.trim(),
+                price: parseFloat(priceEl.textContent),
+                image: imgEl.getAttribute('src').replace('images/', ''),
+            };
+        }).filter(item => item !== null); // Filter out any skipped (malformed) items
     }
 
     function renderMenuItems() {
@@ -67,9 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
-            // Use a cache-busting query parameter
             const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${Date.now()}`);
-            if (!response.ok) throw new Error('فشل الاتصال بالريبو. تأكد من صحة البيانات.');
+            if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
             fullFileContent = await response.text();
             
@@ -78,12 +96,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const startIndex = fullFileContent.indexOf(startMarker);
             const endIndex = fullFileContent.indexOf(endMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
+            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو.');
             
-            // THIS IS THE FIX: Correctly extract the content *between* the markers
+            // THIS IS THE FIX: Extract the content *between* the markers correctly
             const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
 
             menuItemsData = parseMenuItems(menuHTML);
+            
+            if (menuItemsData.length === 0) {
+                 throw new Error('تم تحليل الملف ولكن لم يتم العثور على أي أصناف. تأكد من أن الأصناف موجودة بين علامات المنيو.');
+            }
+
             renderMenuItems();
             statusDiv.textContent = 'تم التحميل بنجاح.';
             statusDiv.className = 'status success';
@@ -153,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري الحفظ ورفع التحديث...';
         statusDiv.className = 'status';
 
-        // Update data array from UI before saving
         menuItemsData.forEach(item => {
             const card = existingItemsContainer.querySelector(`[data-id="${item.id}"]`);
             if (card) {
