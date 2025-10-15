@@ -5,53 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم تكا بليت</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <header class="main-header">
-            <h1>لوحة تحكم المنيو</h1>
-            <div id="status" class="status">جاري تحميل المنيو...</div>
-        </header>
-
+        <header class="main-header"><h1>لوحة تحكم المنيو</h1><div id="status" class="status"></div></header>
         <section class="card add-item-section">
             <h2>أضف طبق جديد</h2>
             <form id="add-item-form">
                 <div class="form-grid">
                     <input type="text" id="new-name" placeholder="اسم الطبق" required>
-                    <input type="number" id="new-price" placeholder="السعر (رقم فقط)" required>
+                    <input type="number" id="new-price" placeholder="السعر" required>
                     <input type="text" id="new-image-name" placeholder="اسم ملف الصورة (e.g., dish.jpg)" required>
-                    
-                    <div class="category-wrapper">
-                        <input list="categories" id="new-category" placeholder="اختر أو أضف قسم" required>
-                        <datalist id="categories">
-                            </datalist>
-                    </div>
-
+                    <input list="categories" id="new-category" placeholder="اختر أو أضف قسم" required>
+                    <datalist id="categories"></datalist>
                 </div>
                 <textarea id="new-description" placeholder="وصف الطبق" rows="3" required></textarea>
                 <div class="file-upload-wrapper">
-                    <label for="new-image-file" class="file-label">اختر صورة الطبق</label>
-                    <input type="file" id="new-image-file" accept="image/jpeg, image/png, image/webp" required>
-                    <span id="file-name-display">لم يتم اختيار أي ملف</span>
+                    <label for="new-image-file" class="file-label">اختر صورة</label>
+                    <input type="file" id="new-image-file" accept="image/*" required>
+                    <span id="file-name-display">لم يتم اختيار ملف</span>
                 </div>
                 <button type="submit">إضافة الطبق للقائمة</button>
             </form>
         </section>
-
         <section class="existing-items-section">
             <h2>الأطباق الحالية</h2>
-            <div id="existing-items-container">
-                </div>
+            <div id="existing-items-container"></div>
         </section>
-
-        <footer class="main-footer">
-            <button id="save-btn" disabled>حفظ كل التغييرات ورفع التحديث</button>
-        </footer>
+        <footer class="main-footer"><button id="save-btn" disabled>حفظ ورفع التحديث</button></footer>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.1/dist/browser-image-compression.js"></script>
     <script src="admin.js"></script>
 </body>
