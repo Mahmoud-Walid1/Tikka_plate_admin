@@ -88,8 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             fullFileContent = await response.text();
             
-            const startMarker = '';
-            const endMarker = '';
+            const startMarker = '<!-- MENU START -->';
+            const endMarker = '<!-- MENU END -->';
+            const filterStart = '<!-- FILTERS START -->';
+            const filterEnd = '<!-- FILTERS END -->';
+
             const startIndex = fullFileContent.indexOf(startMarker);
             const endIndex = fullFileContent.indexOf(endMarker);
             
