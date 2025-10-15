@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             statusDiv.className = 'status success';
             setTimeout(() => window.location.reload(), 2000);
 
-        } catch (error) => {
+        } catch (error) {
             statusDiv.textContent = `فشل التحديث: ${error.message}`;
             statusDiv.className = 'status error';
         } finally {
