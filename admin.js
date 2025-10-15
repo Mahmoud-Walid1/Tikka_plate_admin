@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements ---
     const statusDiv = document.getElementById('status');
     const existingItemsContainer = document.getElementById('existing-items-container');
     const addItemForm = document.getElementById('add-item-form');
@@ -8,22 +7,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileNameDisplay = document.getElementById('file-name-display');
     const categoryDatalist = document.getElementById('categories');
 
-    // --- State ---
     let fullFileContent = '';
     let menuItemsData = [];
     let newImageData = null;
+    let newImageName = '';
 
-    // --- GitHub Repo Details ---
     const REPO_OWNER = 'Mahmoud-Walid1';
     const REPO_NAME = 'Tikka_plate';
     const FILE_PATH = 'index.html';
     const BRANCH_NAME = 'main';
     
-    // --- Functions ---
     function parseMenuItems(htmlString) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         return Array.from(doc.querySelectorAll('.menu-item')).map(div => ({
+            id: Date.now() + Math.random(), // Unique ID for virtual DOM
             category: div.dataset.category,
             name: div.querySelector('h3').textContent.trim(),
             description: div.querySelector('p').textContent.trim(),
@@ -35,11 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMenuItems() {
         existingItemsContainer.innerHTML = '';
         const categories = new Set();
-        menuItemsData.forEach((item, index) => {
+        menuItemsData.forEach(item => {
             categories.add(item.category);
             const itemCard = document.createElement('div');
             itemCard.className = 'card item-card';
-            itemCard.dataset.index = index;
+            itemCard.dataset.id = item.id;
             itemCard.innerHTML = `
                 <img src="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/images/${item.image}" alt="${item.name}">
                 <div class="item-inputs">
@@ -47,10 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="number" value="${item.price}" class="item-price" placeholder="السعر">
                     <textarea class="item-description" rows="3" placeholder="الوصف">${item.description}</textarea>
                 </div>
-                <div class="item-actions">
-                    <button class="delete-btn">حذف</button>
-                </div>
-            `;
+                <div class="item-actions"><button class="delete-btn">حذف</button></div>`;
             existingItemsContainer.appendChild(itemCard);
         });
         categoryDatalist.innerHTML = '';
@@ -63,28 +58,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchMenu() {
-        statusDiv.textContent = 'جاري تحميل آخر نسخة من المنيو...';
+        statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
-            const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}`);
+            const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${Date.now()}`);
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
             fullFileContent = await response.text();
-            
             const startMarker = '';
             const endMarker = '';
             const startIndex = fullFileContent.indexOf(startMarker);
             const endIndex = fullFileContent.indexOf(endMarker);
             
-            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو في الملف.');
+            if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو.');
             
             const menuHTML = fullFileContent.substring(startIndex, endIndex);
             menuItemsData = parseMenuItems(menuHTML);
             renderMenuItems();
-            statusDiv.textContent = 'تم التحميل بنجاح. جاهز للتعديل.';
+            statusDiv.textContent = 'تم التحميل بنجاح.';
             statusDiv.className = 'status success';
         } catch (error) {
-            statusDiv.textContent = `فشل تحميل المنيو: ${error.message}`;
+            statusDiv.textContent = `فشل التحميل: ${error.message}`;
             statusDiv.className = 'status error';
         }
     }
@@ -92,91 +86,86 @@ document.addEventListener('DOMContentLoaded', () => {
     newImageFileInput.addEventListener('change', async (event) => {
         const file = event.target.files[0];
         if (!file) {
-            fileNameDisplay.textContent = 'لم يتم اختيار أي ملف';
+            fileNameDisplay.textContent = 'لم يتم اختيار ملف';
             newImageData = null;
             return;
         }
-
-        fileNameDisplay.textContent = `جاري ضغط الصورة: ${file.name}`;
-        const options = { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true };
-
+        fileNameDisplay.textContent = `ضغط: ${file.name}`;
         try {
-            const compressedFile = await imageCompression(file, options);
-            fileNameDisplay.textContent = `تم ضغط الصورة بنجاح! (${(compressedFile.size / 1024).toFixed(1)} KB)`;
+            const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1200 });
+            fileNameDisplay.textContent = `ضغط بنجاح! (${(compressedFile.size / 1024).toFixed(1)} KB)`;
+            newImageName = document.getElementById('new-image-name').value || file.name.replace(/\s+/g, '-');
             
             const reader = new FileReader();
-            reader.onload = function(e) { newImageData = e.target.result.split(',')[1]; };
+            reader.onload = (e) => { newImageData = e.target.result.split(',')[1]; };
             reader.readAsDataURL(compressedFile);
         } catch (error) {
-            fileNameDisplay.textContent = 'حدث خطأ أثناء ضغط الصورة.';
+            fileNameDisplay.textContent = 'خطأ في الضغط.';
             newImageData = null;
         }
     });
 
     addItemForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        saveBtn.click();
+        const newItemData = {
+            id: Date.now(),
+            name: document.getElementById('new-name').value,
+            price: document.getElementById('new-price').value,
+            image: document.getElementById('new-image-name').value,
+            category: document.getElementById('new-category').value,
+            description: document.getElementById('new-description').value,
+        };
+        menuItemsData.push(newItemData);
+        renderMenuItems();
+        addItemForm.reset();
+        fileNameDisplay.textContent = 'لم يتم اختيار ملف';
+        statusDiv.textContent = 'تمت الإضافة. اضغط "حفظ" لرفع التغييرات.';
+        statusDiv.className = 'status success';
     });
 
     existingItemsContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('delete-btn')) {
-            if (confirm('هل أنت متأكد أنك تريد حذف هذا الطبق؟')) {
+            if (confirm('هل أنت متأكد؟')) {
                 const cardToDelete = e.target.closest('.item-card');
-                cardToDelete.style.display = 'none'; 
-                cardToDelete.classList.add('deleted');
-                statusDiv.textContent = 'تم حذف الطبق. اضغط "حفظ" لتأكيد الحذف.';
+                const idToDelete = parseFloat(cardToDelete.dataset.id);
+                menuItemsData = menuItemsData.filter(item => item.id !== idToDelete);
+                renderMenuItems();
+                statusDiv.textContent = 'تم الحذف. اضغط "حفظ" للتأكيد.';
                 statusDiv.className = 'status success';
             }
         }
     });
 
     saveBtn.addEventListener('click', async () => {
-        if (!confirm('هل أنت متأكد أنك تريد رفع كل التغييرات على الموقع الرئيسي؟')) return;
+        if (!confirm('هل تريد رفع كل التغييرات للموقع الرئيسي؟')) return;
 
         saveBtn.disabled = true;
         statusDiv.textContent = 'جاري الحفظ ورفع التحديث...';
         statusDiv.className = 'status';
 
-        const updatedItems = [];
-        const allCategories = new Set();
-
-        existingItemsContainer.querySelectorAll('.item-card:not(.deleted)').forEach(card => {
-             const originalItem = menuItemsData[card.dataset.index];
-             const updatedItem = {
+        const updatedItems = Array.from(existingItemsContainer.querySelectorAll('.item-card')).map(card => {
+            const id = parseFloat(card.dataset.id);
+            const originalItem = menuItemsData.find(item => item.id === id);
+            return {
                 ...originalItem,
                 name: card.querySelector('.item-name').value,
                 price: card.querySelector('.item-price').value,
                 description: card.querySelector('.item-description').value,
             };
-            updatedItems.push(updatedItem);
-            allCategories.add(updatedItem.category);
         });
         
-        const newNameInput = document.getElementById('new-name');
-        if (newNameInput.value && newImageData) {
-            const newItem = {
-                name: newNameInput.value,
-                price: document.getElementById('new-price').value,
-                image: document.getElementById('new-image-name').value,
-                category: document.getElementById('new-category').value,
-                description: document.getElementById('new-description').value,
-            };
-            updatedItems.push(newItem);
-            allCategories.add(newItem.category);
-        }
+        const allCategories = [...new Set(updatedItems.map(item => item.category))];
         
-        // --- Rebuild BOTH Filters and Menu Items ---
-
         const newFilterButtonsHTML = `
             <div class="menu-filters">
                 <button class="filter-btn active" data-filter="all">الكل</button>
-                ${[...allCategories].map(cat => `<button class="filter-btn" data-filter="${cat}">${cat}</button>`).join('\n                ')}
+                ${allCategories.map(cat => `<button class="filter-btn" data-filter="${cat.toLowerCase().replace(/\s+/g, '-')}">${cat}</button>`).join('\n                ')}
             </div>`;
         
         const newMenuItemsHTML = `
             <div class="menu-grid">
                 ${updatedItems.map(item => `
-                <div class="menu-item" data-category="${item.category}">
+                <div class="menu-item" data-category="${item.category.toLowerCase().replace(/\s+/g, '-')}">
                     <img src="images/${item.image}" alt="${item.name}" loading="lazy">
                     <h3>${item.name}</h3>
                     <p>${item.description}</p>
@@ -191,24 +180,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const menuStart = '';
         const menuEnd = '';
 
-        // Replace filters
-        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(filterStart)) + 
-                          filterStart + newFilterButtonsHTML + filterEnd +
-                          tempFullContent.substring(tempFullContent.indexOf(filterEnd) + filterEnd.length);
-
-        // Replace menu items
-        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(menuStart)) +
-                          menuStart + newMenuItemsHTML + menuEnd +
-                          tempFullContent.substring(tempFullContent.indexOf(menuEnd) + menuEnd.length);
+        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(filterStart) + filterStart.length) + newFilterButtonsHTML + tempFullContent.substring(tempFullContent.indexOf(filterEnd));
+        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(menuStart) + menuStart.length) + newMenuItemsHTML + tempFullContent.substring(tempFullContent.indexOf(menuEnd));
         
-        const newFullContent = tempFullContent;
-        
-        const payload = { newContent: newFullContent };
-        if (newNameInput.value && newImageData) {
-            payload.newImage = {
-                name: document.getElementById('new-image-name').value,
-                content: newImageData
-            };
+        const payload = { newContent: tempFullContent };
+        if (newImageData && newImageName) {
+            payload.newImage = { name: newImageName, content: newImageData };
         }
 
         try {
@@ -218,9 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload),
             });
             const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.message || 'حدث خطأ غير معروف.');
+            if (!response.ok || !result.success) throw new Error(result.message || 'حدث خطأ.');
             
-            statusDiv.textContent = 'تم التحديث بنجاح! جاري إعادة تحميل الصفحة...';
+            statusDiv.textContent = 'تم التحديث بنجاح! جاري إعادة التحميل...';
             statusDiv.className = 'status success';
             setTimeout(() => window.location.reload(), 2000);
 
@@ -232,6 +209,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Initial Load
     fetchMenu();
 });
