@@ -224,5 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Initial Load
     fetchMenu();
 });
