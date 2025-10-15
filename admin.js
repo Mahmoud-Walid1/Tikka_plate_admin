@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري تحميل آخر نسخة...';
         statusDiv.className = 'status';
         try {
+            // Use a cache-busting query parameter
             const response = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH_NAME}/${FILE_PATH}?t=${Date.now()}`);
             if (!response.ok) throw new Error('فشل الاتصال بالريبو.');
             
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (startIndex === -1 || endIndex === -1) throw new Error('لم يتم العثور على علامات المنيو.');
             
-            // THIS IS THE FIX: Extract the content *between* the markers correctly
+            // THIS IS THE FIX: Correctly extract the content *between* the markers
             const menuHTML = fullFileContent.substring(startIndex + startMarker.length, endIndex);
 
             menuItemsData = parseMenuItems(menuHTML);
@@ -176,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري الحفظ ورفع التحديث...';
         statusDiv.className = 'status';
 
+        // Update data array from UI before saving
         menuItemsData.forEach(item => {
             const card = existingItemsContainer.querySelector(`[data-id="${item.id}"]`);
             if (card) {
@@ -211,12 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const menuStart = '';
         const menuEnd = '';
 
+        // Replace filters
         const filterStartIndex = tempFullContent.indexOf(filterStart);
         const filterEndIndex = tempFullContent.indexOf(filterEnd);
         if (filterStartIndex > -1 && filterEndIndex > -1) {
             tempFullContent = tempFullContent.slice(0, filterStartIndex + filterStart.length) + newFilterButtonsHTML + tempFullContent.slice(filterEndIndex);
         }
 
+        // Replace menu items
         const menuStartIndex = tempFullContent.indexOf(menuStart);
         const menuEndIndex = tempFullContent.indexOf(menuEnd);
         if (menuStartIndex > -1 && menuEndIndex > -1) {
