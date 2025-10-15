@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Elements ---
     const statusDiv = document.getElementById('status');
     const existingItemsContainer = document.getElementById('existing-items-container');
     const addItemForm = document.getElementById('add-item-form');
@@ -7,16 +8,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileNameDisplay = document.getElementById('file-name-display');
     const categoryDatalist = document.getElementById('categories');
 
+    // --- State (Source of Truth) ---
     let fullFileContent = '';
-    let menuItemsData = [];
+    let menuItemsData = []; // This array is now the single source of truth.
     let newImageData = null;
     let newImageName = '';
 
+    // --- GitHub Repo Details ---
     const REPO_OWNER = 'Mahmoud-Walid1';
     const REPO_NAME = 'Tikka_plate';
     const FILE_PATH = 'index.html';
     const BRANCH_NAME = 'main';
     
+    // --- Functions ---
+
     function parseMenuItems(htmlString) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
@@ -112,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: document.getElementById('new-name').value,
             price: document.getElementById('new-price').value,
             image: document.getElementById('new-image-name').value,
-            category: document.getElementById('new-category').value,
+            category: document.getElementById('new-category').value.toLowerCase().replace(/\s+/g, '-'),
             description: document.getElementById('new-description').value,
         };
         menuItemsData.push(newItemData);
@@ -143,29 +148,28 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDiv.textContent = 'جاري الحفظ ورفع التحديث...';
         statusDiv.className = 'status';
 
-        const updatedItems = Array.from(existingItemsContainer.querySelectorAll('.item-card')).map(card => {
-            const id = parseFloat(card.dataset.id);
-            const originalItem = menuItemsData.find(item => item.id === id);
-            return {
-                ...originalItem,
-                name: card.querySelector('.item-name').value,
-                price: card.querySelector('.item-price').value,
-                description: card.querySelector('.item-description').value,
-            };
+        // Update data array from UI before saving
+        menuItemsData.forEach(item => {
+            const card = existingItemsContainer.querySelector(`[data-id="${item.id}"]`);
+            if (card) {
+                item.name = card.querySelector('.item-name').value;
+                item.price = card.querySelector('.item-price').value;
+                item.description = card.querySelector('.item-description').value;
+            }
         });
-        
-        const allCategories = [...new Set(updatedItems.map(item => item.category))];
+
+        const allCategories = [...new Set(menuItemsData.map(item => item.category))];
         
         const newFilterButtonsHTML = `
             <div class="menu-filters">
                 <button class="filter-btn active" data-filter="all">الكل</button>
-                ${allCategories.map(cat => `<button class="filter-btn" data-filter="${cat.toLowerCase().replace(/\s+/g, '-')}">${cat}</button>`).join('\n                ')}
+                ${allCategories.map(cat => `<button class="filter-btn" data-filter="${cat}">${cat.replace(/-/g, ' ')}</button>`).join('\n                ')}
             </div>`;
         
         const newMenuItemsHTML = `
             <div class="menu-grid">
-                ${updatedItems.map(item => `
-                <div class="menu-item" data-category="${item.category.toLowerCase().replace(/\s+/g, '-')}">
+                ${menuItemsData.map(item => `
+                <div class="menu-item" data-category="${item.category}">
                     <img src="images/${item.image}" alt="${item.name}" loading="lazy">
                     <h3>${item.name}</h3>
                     <p>${item.description}</p>
@@ -180,8 +184,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const menuStart = '';
         const menuEnd = '';
 
-        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(filterStart) + filterStart.length) + newFilterButtonsHTML + tempFullContent.substring(tempFullContent.indexOf(filterEnd));
-        tempFullContent = tempFullContent.substring(0, tempFullContent.indexOf(menuStart) + menuStart.length) + newMenuItemsHTML + tempFullContent.substring(tempFullContent.indexOf(menuEnd));
+        // Replace filters
+        const filterStartIndex = tempFullContent.indexOf(filterStart);
+        const filterEndIndex = tempFullContent.indexOf(filterEnd);
+        if (filterStartIndex > -1 && filterEndIndex > -1) {
+            tempFullContent = tempFullContent.slice(0, filterStartIndex + filterStart.length) + newFilterButtonsHTML + tempFullContent.slice(filterEndIndex);
+        }
+
+        // Replace menu items
+        const menuStartIndex = tempFullContent.indexOf(menuStart);
+        const menuEndIndex = tempFullContent.indexOf(menuEnd);
+        if (menuStartIndex > -1 && menuEndIndex > -1) {
+            tempFullContent = tempFullContent.slice(0, menuStartIndex + menuStart.length) + newMenuItemsHTML + tempFullContent.slice(menuEndIndex);
+        }
         
         const payload = { newContent: tempFullContent };
         if (newImageData && newImageName) {
