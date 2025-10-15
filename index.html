@@ -22,16 +22,21 @@
                 <div class="form-grid">
                     <input type="text" id="new-name" placeholder="اسم الطبق" required>
                     <input type="number" id="new-price" placeholder="السعر (رقم فقط)" required>
-                    <input type="text" id="new-image" placeholder="اسم ملف الصورة (e.g., dish.jpg)" required>
-                    <select id="new-category" required>
-                        <option value="" disabled selected>اختر القسم</option>
-                        <option value="main">أطباق رئيسية</option>
-                        <option value="appetizer">مقبلات وساندويتشات</option>
-                        <option value="bread">مخبوزات وحلويات</option>
-                        <option value="drink">مشروبات</option>
-                    </select>
+                    <input type="text" id="new-image-name" placeholder="اسم ملف الصورة (e.g., dish.jpg)" required>
+                    
+                    <div class="category-wrapper">
+                        <input list="categories" id="new-category" placeholder="اختر أو أضف قسم" required>
+                        <datalist id="categories">
+                            </datalist>
+                    </div>
+
                 </div>
                 <textarea id="new-description" placeholder="وصف الطبق" rows="3" required></textarea>
+                <div class="file-upload-wrapper">
+                    <label for="new-image-file" class="file-label">اختر صورة الطبق</label>
+                    <input type="file" id="new-image-file" accept="image/jpeg, image/png, image/webp" required>
+                    <span id="file-name-display">لم يتم اختيار أي ملف</span>
+                </div>
                 <button type="submit">إضافة الطبق للقائمة</button>
             </form>
         </section>
